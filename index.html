@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="id"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Database Project</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<script>
+function tampilError(m){var a=document.getElementById('app');if(a)a.innerHTML='<div class="ld"><b>Terjadi error</b><br>'+String(m).replace(/</g,'&lt;')+'<br><small>Tekan Ctrl+F5. Jika masih sama, kirim pesan ini ke Claude.</small></div>'}
+window.addEventListener('error',function(e){tampilError(e.message)});
+window.addEventListener('unhandledrejection',function(e){tampilError(e.reason&&e.reason.message||e.reason)});
+setTimeout(function(){var a=document.getElementById('app');if(a&&!a.innerHTML.trim())tampilError('Aplikasi tidak termuat (app.js tidak jalan atau tidak ditemukan).')},4000);
+</script></head><body>
+<div class="shell">
+<aside class="sb">
+<div class="logo"><i><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 3 8l9 5 9-5-9-5z"/><path d="M3 12.5l9 5 9-5M3 17l9 5 9-5"/></svg></i>Database Project</div>
+<div id="nav"></div>
+<div class="sbf"><button class="btn" onclick="upl('G')">Unggah Dokumen</button></div>
+</aside>
+<div class="mn">
+<div class="top"><input id="q" placeholder="Cari vendor, project, atau dokumen..." oninput="render()" autocomplete="off"></div>
+<main id="app"></main>
+</div></div><div id="modal"></div>
+<script src="config.js"></script>
+<script src="app.js"></script>
+</body></html>
