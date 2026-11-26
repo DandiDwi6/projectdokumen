@@ -87,14 +87,14 @@ function save(n,id){
 function rd(f){return new Promise(function(res,rej){var r=new FileReader();r.onload=function(){res(r.result.split(',')[1])};r.onerror=rej;r.readAsDataURL(f)})}
 async function run(n,id){
   var rows=[].slice.call(document.querySelectorAll('.ur')),isV=n=='Vendor';$('go').disabled=true;$('fl').disabled=true;
-  for(var i=0;i<rows.length;i++){var r=rows[i],st=r.querySelector('.st');if(r.dataset.done)continue;
+  for(var i=0;i<rows.length;i++){var r=rows[i],st=r.querySelector('.st');if(r.dataset.done)continue;if(FILES[i].size>MAXMB*1048576){st.textContent='Terlalu besar (maks. '+MAXMB+' MB)';st.className='st er';continue}
     st.textContent='Mengunggah…';st.className='st w';
     try{var b=await rd(FILES[i]);
-      await new Promise(function(res,rej){google.script.run.withSuccessHandler(res).withFailureHandler(rej).uploadFile({name:FILES[i].name,mime:FILES[i].type||'application/pdf',jenis:r.querySelector('select').value,baru:(r.querySelector('.jb').hidden?'':r.querySelector('.jb').value.trim()),grup:grp(r.querySelector('select')),berlaku:r.querySelector('.bk').value,vendorId:n=='G'?$('gv').value:isV?id:($('uv')?$('uv').value:''),projectId:n=='G'?$('gp').value:isV?'':id,folderId:FC.cur||''},b)});
+      await new Promise(function(res,rej){google.script.run.withSuccessHandler(res).withFailureHandler(rej).uploadFile({name:FILES[i].name,mime:FILES[i].type||'application/octet-stream',jenis:r.querySelector('select').value,baru:(r.querySelector('.jb').hidden?'':r.querySelector('.jb').value.trim()),grup:grp(r.querySelector('select')),berlaku:r.querySelector('.bk').value,vendorId:n=='G'?$('gv').value:isV?id:($('uv')?$('uv').value:''),projectId:n=='G'?$('gp').value:isV?'':id,folderId:FC.cur||''},b)});
       st.textContent='Berhasil ✓';st.className='st ok';r.dataset.done=1;CH=true}
     catch(e){st.textContent='Gagal: '+(e.message||e);st.className='st er'}
     $('ov').textContent=document.querySelectorAll('.ur[data-done]').length+' dari '+rows.length+' file selesai'}
-  $('go').disabled=document.querySelectorAll('.ur[data-done]').length==rows.length;$('go').textContent='Ulangi yang gagal'}
+  $('fl').disabled=false;var sisa=rows.filter(function(r){return !r.dataset.done}).length;$('go').textContent=sisa?'Ulangi yang gagal':'Unggah semua';goRefresh()}
 function av(n){var s=String(n||'?').trim()||'?',w=s.split(/\s+/),t=((w[0]||'?')[0]+(w[1]?w[1][0]:'')).toUpperCase(),h=0;for(var i=0;i<s.length;i++)h=(h*31+s.charCodeAt(i))%360;return '<span class="av" style="background:hsl('+h+' 75% 93%);color:hsl('+h+' 55% 32%)">'+esc(t)+'</span>'}
 function nm(a,b){return '<div class="nm">'+a+(b?'<small>'+b+'</small>':'')+'</div>'}
 function who(n,s){return '<div class="who">'+av(n)+nm(esc(n),esc(s||''))+'</div>'}
@@ -167,19 +167,29 @@ function frm(n,id){
   if(n=='Project'){var cur=id?vOf(id).map(function(v){return v.ID}):[];h+='<div class="sec"><h3>Vendor yang terlibat (opsional)</h3>'+(D.vendor.length?D.vendor.map(function(v){return '<label class="ck"><input type="checkbox" class="vc" value="'+v.ID+'"'+(cur.indexOf(v.ID)>=0?' checked':'')+'>'+esc(v.Nama)+'</label>'}).join(''):'<span class="mu">Belum ada vendor. Project tetap bisa disimpan tanpa vendor.</span>')+'</div>'}
   show(h+'<div class="ft"><button class="btn s" onclick="'+(id?'det(\''+n+'\',\''+id+'\')':'cl()')+'">Batal</button><button class="btn" id="sv" onclick="save(\''+n+'\',\''+(id||'')+'\')">Simpan</button></div>')}
 var UF=0;
-function upl(n,id,f){UF=f?1:0;UN=n;FC.cur='';FC.busy=false;FC.t++;
+function upl(n,id,f){FILES=[];UF=f?1:0;UN=n;FC.cur='';FC.busy=false;FC.t++;
   if(!D)return;
   var G=n=='G',isV=n=='Vendor',vs=isV||G?[]:vOf(id);
   var sel=G?'<div class="g"><label>Vendor<select id="gv" onchange="gpl()">'+D.vendor.map(function(v){return '<option value="'+v.ID+'">'+esc(v.Nama)+'</option>'}).join('')+'<option value="">Tanpa vendor (dokumen project)</option></select></label><label>Project<select id="gp" onchange="pick(\'G\');fdShow(this.value,$(\'gv\').value)"></select></label></div>':
     isV?'':!vs.length?'':'<label>Vendor (opsional)<select id="uv" onchange="fdShow(\''+id+'\',this.value)"><option value="">Tanpa vendor (dokumen project)</option>'+vs.map(function(v){return '<option value="'+v.ID+'">'+esc(v.Nama)+'</option>'}).join('')+'</select></label>';
-  show('<div class="dh"><div class="dt"><h2>Unggah dokumen</h2><small>PDF, bisa pilih banyak file sekaligus</small></div><button class="x" onclick="cl()">✕</button></div>'+sel+'<div id="fd"></div>'+
-  '<label class="drop"><b>Klik untuk memilih file</b><span>atau seret file PDF ke sini</span><input type="file" id="fl" multiple accept=".pdf,application/pdf" onchange="pick(\''+n+'\')"></label><div id="ul"></div><p id="ov" class="mu"></p>'+
+  show('<div class="dh"><div class="dt"><h2>Unggah dokumen</h2><small>Semua jenis file (PDF, Word, Excel, ZIP, gambar, dll.) · bisa banyak file sekaligus</small></div><button class="x" onclick="cl()">✕</button></div>'+sel+'<div id="fd"></div>'+
+  '<label class="drop"><b>Klik untuk memilih file</b><span>atau seret file apa saja ke sini (maks. 35 MB per file)</span><input type="file" id="fl" multiple onchange="pick(\''+n+'\',1)"></label><div id="ul"></div><p id="ov" class="mu"></p>'+
   '<div class="ft"><button class="btn s" onclick="cl()">Selesai</button><button class="btn" id="go" onclick="run(\''+n+'\',\''+id+'\')" disabled>Unggah semua</button></div>');
   if(G)gpl();else if(isV)fdShow('',id);else fdShow(id,'')}
 function gpl(){var nv=!$('gv').value;$('gp').innerHTML=(nv?'':'<option value="">Tanpa project (dokumen umum vendor)</option>')+(nv?D.project:pOf($('gv').value)).map(function(p){return '<option value="'+p.ID+'">Project: '+esc(p.Tahun+' · '+p.Nama)+'</option>'}).join('')+(nv?'<option value="">Tanpa project (dokumen umum)</option>':'');pick('G');fdShow($('gp').value,$('gv').value)}
-function pick(n){
-  FILES=[].slice.call($('fl').files);var g=(n=='G'&&!$('gv').value&&!$('gp').value)?JGall():JG(n=='G'?!!$('gp').value:n!='Vendor'),df=UF&&(D.jenisF||[])[0];
-  $('ul').innerHTML=FILES.length?'<div class="uh"><span>File</span><span>Jenis dokumen</span><span>Berlaku sampai</span><span>Status</span></div>'+FILES.map(function(f){return '<div class="ur"><span class="fn">📄 '+esc(f.name)+'</span><div class="jc"><select onchange="jch(this);goRefresh()">'+jopt(g,df)+'</select><input class="jb" placeholder="Tulis jenis dokumen baru…" hidden></div><input type="date" class="bk" title="Berlaku sampai (opsional)"><span class="st">Menunggu</span></div>'}).join(''):'';
+var MAXMB=35;
+function fico(nm){var e=(String(nm).split('.').pop()||'').toLowerCase();return /^(pdf)$/.test(e)?'📕':/^(docx?|rtf|odt)$/.test(e)?'📘':/^(xlsx?|csv|ods)$/.test(e)?'📗':/^(pptx?|odp)$/.test(e)?'📙':/^(zip|rar|7z|tar|gz)$/.test(e)?'🗜️':/^(jpe?g|png|gif|webp|bmp|svg|heic)$/.test(e)?'🖼️':/^(dwg|dxf)$/.test(e)?'📐':'📄'}
+function fsz(b){return b>=1048576?(b/1048576).toFixed(1)+' MB':Math.max(1,Math.round(b/1024))+' KB'}
+function pick(n,add){
+  var inp=$('fl'),old=[].slice.call(document.querySelectorAll('.ur')).map(function(r){return{j:r.querySelector('select').value,b:r.querySelector('.jb').value,h:r.querySelector('.jb').hidden,k:r.querySelector('.bk').value,d:r.dataset.done,s:r.querySelector('.st').textContent,c:r.querySelector('.st').className}});
+  if(add){
+    [].slice.call(inp.files).forEach(function(f){if(!FILES.some(function(x){return x.name==f.name&&x.size==f.size&&x.lastModified==f.lastModified}))FILES.push(f)});
+    try{inp.value=''}catch(e){}
+  }else old=[];
+  var g=(n=='G'&&!$('gv').value&&!$('gp').value)?JGall():JG(n=='G'?!!$('gp').value:n!='Vendor'),df=UF&&(D.jenisF||[])[0];
+  $('ul').innerHTML=FILES.length?'<div class="uh"><span>File</span><span>Jenis dokumen</span><span>Berlaku sampai</span><span>Status</span></div>'+FILES.map(function(f){var big=f.size>MAXMB*1048576;return '<div class="ur"><span class="fn" title="'+esc(f.name)+'">'+fico(f.name)+' '+esc(f.name)+' <small class="mu">('+fsz(f.size)+')</small></span><div class="jc"><select onchange="jch(this);goRefresh()">'+jopt(g,df)+'</select><input class="jb" placeholder="Tulis jenis dokumen baru…" hidden></div><input type="date" class="bk" title="Berlaku sampai (opsional)"><span class="st'+(big?' er':'')+'">'+(big?'Terlalu besar (maks. '+MAXMB+' MB)':'Menunggu')+'</span></div>'}).join(''):'';
+  var rows=document.querySelectorAll('.ur');
+  old.forEach(function(o,i){var r=rows[i];if(!r)return;r.querySelector('select').value=o.j;var jb=r.querySelector('.jb');jb.value=o.b;jb.hidden=o.h;r.querySelector('.bk').value=o.k;if(o.d){r.dataset.done=o.d;var st=r.querySelector('.st');st.textContent=o.s;st.className=o.c}});
   goRefresh()}
 function hapus(n,id){
   var isV=n=='Vendor',o=(isV?D.vendor:D.project).find(function(r){return r.ID==id});if(!o)return;
@@ -288,7 +298,7 @@ function ddpv(id){
   b.innerHTML='<div class="pvw"><div class="ld"><div class="sp"></div>Memuat dokumen…</div><iframe src="'+pvu(d.Link)+'" allow="autoplay"></iframe></div><p class="mu pvh">Dokumen tidak tampil? Pastikan Anda login ke akun Google yang punya akses, atau pakai "Buka di tab baru".</p>';
   w.classList.add('wide');$('pvb').textContent='Sembunyikan dokumen'}
 var FC={cur:'',root:'',lv:0,t:0,busy:false,need:false,pid:'',vid:''},UN='';
-function ofl(){return !($('fl')&&$('fl').files.length)}
+function ofl(){return !(FILES&&FILES.some(function(f,i){var r=document.querySelectorAll('.ur')[i];return f.size<=MAXMB*1048576&&!(r&&r.dataset.done)}))}
 function allFin(){var r=[].slice.call(document.querySelectorAll('.ur select'));var F=D.jenisF||[];return r.length>0&&r.every(function(x){return F.indexOf(x.value)>=0&&D.jenisP.indexOf(x.value)<0&&D.jenisV.indexOf(x.value)<0})}
 function goRefresh(){if(!$('go'))return;var g=false,nf=FC.need&&FC.cur==FC.root&&!allFin();
   $('go').disabled=ofl()||g||FC.busy||nf;
@@ -312,7 +322,8 @@ function fdLevel(parent,lv,pk){
   [].slice.call(c.querySelectorAll('select')).forEach(function(s){if(+s.dataset.lv>=lv)s.remove()});
   FC.cur=parent;FC.lv=lv;fdPath();goRefresh();var t=FC.t;
   google.script.run.withSuccessHandler(function(l){
-    if(t!=FC.t||FC.cur!=parent||!l.length)return;
+    if(t!=FC.t||FC.cur!=parent)return;
+    if(!l.length){if(lv==0){FC.need=false;if($('fmsg'))$('fmsg').textContent='Belum ada folder kategori. File disimpan di folder standar.';goRefresh()}return}
     var s=document.createElement('select');s.dataset.lv=lv;
     s.innerHTML='<option value="">'+(lv?'(simpan di folder ini)':'— pilih kategori —')+'</option>'+l.map(function(f){return '<option value="'+f.id+'">'+esc(f.name)+'</option>'}).join('');
     s.onchange=function(){var v=this.value;[].slice.call(c.querySelectorAll('select')).forEach(function(x){if(+x.dataset.lv>lv)x.remove()});
